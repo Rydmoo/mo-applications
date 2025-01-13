@@ -1,6 +1,6 @@
 # FiveM Server Whitelist Application
 
-[Preview](https://streamable.com/vk5j56)
+# [Preview](https://streamable.com/vk5j56)
 
 A sleek, user-friendly web application for managing whitelist applications to your FiveM roleplay server. Built with Next.js and featuring a modern, responsive design using shadcn/ui components.
 
