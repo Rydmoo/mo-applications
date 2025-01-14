@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
-
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -18,6 +18,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import AuthButton from './auth-button'
+import ProfileCard from './profile-card'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const formSchema = z.object({
   username: z.string().min(3, {
@@ -28,9 +31,6 @@ const formSchema = z.object({
   }),
   steamId: z.string().regex(/^[0-9]{17}$/, {
     message: 'Invalid Steam ID. It should be a 17-digit number.',
-  }),
-  discordId: z.string().min(3, {
-    message: 'Discord ID must be at least 3 characters.',
   }),
   cfxAccount: z.string().url({
     message: 'Please enter a valid CFX account URL.',
@@ -45,15 +45,15 @@ const formSchema = z.object({
 
 export default function WhitelistForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { data: session } = useSession()
   const { toast } = useToast()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: '',
-      age: undefined,
+      age: 18,
       steamId: '',
-      discordId: '',
       cfxAccount: '',
       experience: '',
       character: '',
@@ -61,29 +61,29 @@ export default function WhitelistForm() {
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!session?.discord) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign in with Discord before submitting.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsSubmitting(true)
-    const webhookUrl = ''
     
-    const formattedData = `
-**New Whitelist Application**
-👤 **Username:** ${values.username}
-🎂 **Age:** ${values.age}
-🎮 **Steam ID:** ${values.steamId}
-🔊 **Discord ID:** ${values.discordId}
-🌐 **CFX Account:** ${values.cfxAccount}
-🎭 **Roleplay Experience:**
-${values.experience}
-📖 **Character Backstory:**
-${values.character}
-    `.trim()
+    const applicationData = {
+      ...values,
+      discord: session.discord,
+    }
 
     try {
-      const response = await fetch(webhookUrl, {
+      const response = await fetch('/api/applications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content: formattedData }),
+        body: JSON.stringify(applicationData),
       })
 
       if (response.ok) {
@@ -108,133 +108,186 @@ ${values.character}
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="Your in-game username" {...field} />
-              </FormControl>
-              <FormDescription>
-                This is the username you will use in the server.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }}
+      className="container mx-auto p-4"
+    >
+      <div className={`mb-8 ${session ? 'flex justify-end' : 'flex justify-center'}`}>
+        <AuthButton />
+      </div>
+      <AnimatePresence>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.5 }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        >
+          {session?.discord ? (
+            <>
+              <div className="lg:col-span-1">
+                <ProfileCard profile={session.discord} className="sticky top-4" />
+              </div>
+              <div className="lg:col-span-2">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 bg-card p-6 rounded-lg shadow-lg">
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2, duration: 0.5 }}
+                    >
+                      <h2 className="text-2xl font-bold mb-6">Whitelist Application</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Your in-game username" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                This is the username you will use in the server.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="age"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Age</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  {...field} 
+                                  onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value, 10) : '')}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                You must be 18 or older to join the server.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </motion.div>
+
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4, duration: 0.5 }}
+                    >
+                      <h3 className="text-xl font-semibold mb-4">Game Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="steamId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Steam ID</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Your 17-digit Steam ID" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Your Steam ID is a 17-digit number. You can find it on your Steam profile.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="cfxAccount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>CFX Account</FormLabel>
+                              <FormControl>
+                                <Input placeholder="https://forum.cfx.re/u/yourusername" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                Your CFX forum account URL.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </motion.div>
+
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.6, duration: 0.5 }}
+                    >
+                      <h3 className="text-xl font-semibold mb-4">Roleplay Information</h3>
+                      <div className="space-y-6">
+                        <FormField
+                          control={form.control}
+                          name="experience"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Roleplay Experience</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Tell us about your previous roleplay experience..." 
+                                  className="min-h-[100px]" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Briefly describe your previous roleplay experience, if any.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="character"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Character Backstory</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Provide a brief backstory for your character..." 
+                                  className="min-h-[150px]" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Give us a brief backstory for the character you plan to roleplay as.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </motion.div>
+
+                    <Button type="submit" disabled={isSubmitting} className="w-full">
+                      {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                    </Button>
+                  </form>
+                </Form>
+              </div>
+            </>
+          ) : (
+            <div
+              className="text-center text-muted-foreground col-span-2 lg:col-span-2"
+            >
+              Please sign in with Discord to access the whitelist application form.
+            </div>
           )}
-        />
-        <FormField
-          control={form.control}
-          name="age"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Age</FormLabel>
-              <FormControl>
-                <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} />
-              </FormControl>
-              <FormDescription>
-                You must be 18 or older to join the server.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="steamId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Steam ID</FormLabel>
-              <FormControl>
-                <Input placeholder="Your 17-digit Steam ID" {...field} />
-              </FormControl>
-              <FormDescription>
-                Your Steam ID is a 17-digit number. You can find it on your Steam profile.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="discordId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Discord ID</FormLabel>
-              <FormControl>
-                <Input placeholder="Your Discord username" {...field} />
-              </FormControl>
-              <FormDescription>
-                Your Discord username (e.g., username).
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="cfxAccount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>CFX Account</FormLabel>
-              <FormControl>
-                <Input placeholder="https://forum.cfx.re/u/yourusername" {...field} />
-              </FormControl>
-              <FormDescription>
-                Your CFX forum account URL.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="experience"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Roleplay Experience</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Tell us about your previous roleplay experience..." 
-                  className="resize-none" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormDescription>
-                Briefly describe your previous roleplay experience, if any.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="character"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Character Backstory</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Provide a brief backstory for your character..." 
-                  className="resize-none" 
-                  {...field} 
-                />
-              </FormControl>
-              <FormDescription>
-                Give us a brief backstory for the character you plan to roleplay as.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Submitting...' : 'Submit Application'}
-        </Button>
-      </form>
-    </Form>
+        </motion.div>
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
