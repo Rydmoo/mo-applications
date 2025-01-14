@@ -38,6 +38,19 @@ Before you begin, ensure you have the following:
 - npm (v6 or later)
 - A Discord application and bot
 - A FiveM server
+- Visual Studio Code Build Tools
+
+To install Visual Studio Code Build Tools:
+
+1. Download the Visual Studio Build Tools installer from the [official Microsoft website](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+2. Run the installer.
+3. In the installer, select the "Desktop development with C++" workload.
+4. Make sure the following components are checked:
+   - MSVC v143 - VS 2022 C++ x64/x86 build tools
+   - Windows 10 SDK
+   - C++ CMake tools for Windows
+5. Click "Install" and wait for the installation to complete.
+6. Restart your computer after the installation is finished.
 
 ## Installation
 
@@ -80,10 +93,10 @@ Replace the placeholder values with your actual credentials.
 ### Admin Configuration
 
 To configure admin users, edit the `src/lib/auth.ts` file:
-```typescript
+
 export const ADMIN_DISCORD_IDS = ['your_discord_id', 'another_admin_id'];
-```
- - Replace the array with the Discord IDs of users who should have admin access.
+
+Replace the array with the Discord IDs of users who should have admin access.
 
 ## Usage
 
@@ -116,10 +129,11 @@ export const ADMIN_DISCORD_IDS = ['your_discord_id', 'another_admin_id'];
 - **Discord authentication issues**: Ensure your Discord application credentials are correct and the redirect URI is properly set in the Discord Developer Portal.
 - **Bot not responding**: Check that the bot token is correct and the bot has the necessary permissions in your Discord server.
 - **Admin access not working**: Verify that the correct Discord IDs are set in the `ADMIN_DISCORD_IDS` array.
+- **Build errors**: If you encounter build errors, make sure you have correctly installed the Visual Studio Code Build Tools as described in the Prerequisites section.
 
 ## Support
 
-For issues, feature requests, or general inquiries, please open an issue on the GitHub repository or contact us through our [Discord support server](https://discord.gg/xuab57BZqU).
+For issues, feature requests, or general inquiries, please open an issue on the GitHub repository or contact us through our Discord support server.
 
 ---
 
