@@ -55,7 +55,7 @@ To install Visual Studio Code Build Tools:
 ## Installation
 
 1. Clone the repository:
-   git clone https://github.com/your-username/aura-applications.git
+   git clone https://github.com/zlexif/aura-applications.git
 
 2. Navigate to the project directory:
    cd aura-applications
